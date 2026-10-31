@@ -3,15 +3,16 @@ import pandas as pd
 import joblib
 import xgboost as xgb
 import mlflow
+import inspect
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-# Enable unsafe deserialization support for SKLearn/XGBoost tracking
+# Enable unsafe deserialization support for SKLearn/XGBoost tracking globally
 os.environ["MLFLOW_SKLEARN_SUPPORT_UNSAFE_DESERIALIZATION"] = "true"
 
 def train_model():
     print("Loading split datasets...")
-    # Load the train and test data from the workflow artifact
+    # Load the train and test data
     train_path = "tourism_project/data/train.csv"
     test_path = "tourism_project/data/test.csv"
 
@@ -85,14 +86,23 @@ def train_model():
         joblib.dump(best_model, model_path)
         print(f"Model saved to {model_path}")
 
-        # Log model artifact to MLflow and infer schema using input_example
+        # Prepare base logging arguments
         input_example = X_test.head(5)
-        mlflow.sklearn.log_model(
-            sk_model=best_model,
-            artifact_path="model",
-            input_example=input_example,
-            skops_trusted_types=["xgboost.core.Booster", "xgboost.sklearn.XGBClassifier"]
-        )
+        log_kwargs = {
+            "sk_model": best_model,
+            "artifact_path": "model",
+            "input_example": input_example
+        }
+
+        # Dynamically check if 'skops_trusted_types' is valid in this version of log_model
+        log_model_sig = inspect.signature(mlflow.sklearn.log_model)
+        if "skops_trusted_types" in log_model_sig.parameters:
+            print("Adding skops_trusted_types parameter for MLflow logging...")
+            log_kwargs["skops_trusted_types"] = ["xgboost.core.Booster", "xgboost.sklearn.XGBClassifier"]
+        else:
+            print("skops_trusted_types is not supported or required in this MLflow environment. Logging normally...")
+
+        mlflow.sklearn.log_model(**log_kwargs)
 
 if __name__ == '__main__':
     train_model()
