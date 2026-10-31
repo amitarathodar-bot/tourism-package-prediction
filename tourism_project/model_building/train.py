@@ -47,7 +47,12 @@ def train_model():
         }
 
         grid_search = GridSearchCV(estimator=base_model, param_grid=param_grid, cv=3, scoring='f1', n_jobs=-1)
-        grid_search.fit(X_train, y_train)
+
+        # Filter user warnings to keep logging clean
+        import warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            grid_search.fit(X_train, y_train)
 
         best_model = grid_search.best_estimator_
         best_params = grid_search.best_params_
@@ -79,11 +84,12 @@ def train_model():
         joblib.dump(best_model, model_path)
         print(f"Model saved to {model_path}")
 
-        # Log model artifact to MLflow safely with skops_trusted_types defined
+        # Log model artifact to MLflow and infer schema using input_example
+        input_example = X_test.head(5)
         mlflow.sklearn.log_model(
-            best_model,
-            "model",
-            skops_trusted_types=["xgboost.core.Booster", "xgboost.sklearn.XGBClassifier"]
+            sk_model=best_model,
+            artifact_path="model",
+            input_example=input_example
         )
 
 if __name__ == '__main__':
