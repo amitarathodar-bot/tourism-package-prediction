@@ -1,0 +1,6 @@
+pandas
+PyGithub==2.9.1
+scikit-learn
+xgboost
+mlflow==3.0.1
+joblib
