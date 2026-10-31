@@ -4,8 +4,9 @@ import joblib
 import xgboost as xgb
 import mlflow
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
+# Enable unsafe deserialization support for SKLearn/XGBoost tracking
 os.environ["MLFLOW_SKLEARN_SUPPORT_UNSAFE_DESERIALIZATION"] = "true"
 
 def train_model():
@@ -23,7 +24,7 @@ def train_model():
     X_test = test_df.drop(columns=[target_col], errors="ignore")
     y_test = test_df[target_col]
 
-    # One-hot encode string columns if any exist in the mock/loaded data
+    # One-hot encode string columns if any exist
     cat_cols = X_train.select_dtypes(include=['object', 'category']).columns.tolist()
     if cat_cols:
         X_train = pd.get_dummies(X_train, columns=cat_cols)
@@ -89,7 +90,8 @@ def train_model():
         mlflow.sklearn.log_model(
             sk_model=best_model,
             artifact_path="model",
-            input_example=input_example
+            input_example=input_example,
+            skops_trusted_types=["xgboost.core.Booster", "xgboost.sklearn.XGBClassifier"]
         )
 
 if __name__ == '__main__':
